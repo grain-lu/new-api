@@ -198,6 +198,8 @@ func TestGeneralOpenAIRequestGetSystemRoleName(t *testing.T) {
 		{name: "gpt 5.6 uses developer", model: "gpt-5.6-luna", want: "developer"},
 		{name: "gpt 6 uses developer", model: "gpt-6-astra", want: "developer"},
 		{name: "gpt 6 snapshot uses developer", model: "gpt-6-astra-2026-09-03", want: "developer"},
+		{name: "gpt 6 decimal sol uses developer", model: "gpt-6.1-sol", want: "developer"},
+		{name: "gpt 6 decimal snapshot uses developer", model: "gpt-6.1-sol-2026-10-01", want: "developer"},
 		{name: "unknown gpt 6 variant stays system", model: "gpt-6-astra-pro", want: "system"},
 		{name: "invalid gpt 6 snapshot stays system", model: "gpt-6-astra-2026-99-03", want: "system"},
 		{name: "unknown generation stays system", model: "gpt-7", want: "system"},
@@ -324,6 +326,56 @@ func TestSGLangRequestExtensionsRoundTrip(t *testing.T) {
 			encoded, err := kitutil.Marshal(tc.request)
 			require.NoError(t, err)
 			assert.JSONEq(t, tc.raw, string(encoded))
+		})
+	}
+}
+
+func TestNormalizeGPT6DecimalVersion(t *testing.T) {
+	tests := []struct {
+		model string
+		want  string
+	}{
+		{model: "gpt-6.1-sol", want: "gpt-6-sol"},
+		{model: "gpt-6.1-sol-2026-10-01", want: "gpt-6-sol-2026-10-01"},
+		{model: "gpt-6.1-terra", want: "gpt-6-terra"},
+		{model: "gpt-6.12-luna", want: "gpt-6-luna"},
+		{model: "gpt-6-sol", want: "gpt-6-sol"},
+		{model: "gpt-6-sol-2026-10-01", want: "gpt-6-sol-2026-10-01"},
+		{model: "gpt-6.astra", want: "gpt-6.astra"},
+		{model: "gpt-6.1", want: "gpt-6.1"},
+		{model: "gpt-6.1x-sol", want: "gpt-6.1x-sol"},
+		{model: "gpt-60", want: "gpt-60"},
+		{model: "gpt-5.6-luna", want: "gpt-5.6-luna"},
+		{model: "gpt-4.1", want: "gpt-4.1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			assert.Equal(t, tt.want, normalizeGPT6DecimalVersion(tt.model))
+		})
+	}
+}
+
+func TestGetOpenAIChatCapabilitiesGPT6DecimalVersions(t *testing.T) {
+	tests := []struct {
+		name        string
+		model       string
+		maxCompl    bool
+		temperature bool
+	}{
+		{name: "gpt-6.1-sol uses max_completion_tokens", model: "gpt-6.1-sol", maxCompl: true, temperature: true},
+		{name: "gpt-6.1-sol snapshot uses max_completion_tokens", model: "gpt-6.1-sol-2026-10-01", maxCompl: true, temperature: true},
+		{name: "gpt-6.1-terra uses max_completion_tokens", model: "gpt-6.1-terra", maxCompl: true, temperature: false},
+		{name: "gpt-6.1-luna uses max_completion_tokens", model: "gpt-6.1-luna", maxCompl: true, temperature: true},
+		{name: "gpt-6-terra uses max_completion_tokens", model: "gpt-6-terra", maxCompl: true, temperature: false},
+		{name: "unknown decimal variant keeps max_tokens", model: "gpt-6.2-unknown", maxCompl: false, temperature: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			capabilities := GetOpenAIChatCapabilities(tt.model, "")
+			assert.Equal(t, tt.maxCompl, capabilities.UseMaxCompletionTokens)
+			assert.Equal(t, tt.temperature, capabilities.SupportsTemperature)
 		})
 	}
 }

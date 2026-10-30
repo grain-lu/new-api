@@ -332,6 +332,7 @@ type OpenAIChatCapabilities struct {
 // Unrecognized models retain their parameters; future GPT generations do not
 // automatically inherit the restrictions of existing models.
 func GetOpenAIChatCapabilities(modelName, reasoningEffort string) OpenAIChatCapabilities {
+	modelName = normalizeGPT6DecimalVersion(modelName)
 	capabilities := OpenAIChatCapabilities{
 		SupportsTemperature: true,
 		SupportsTopP:        true,
@@ -346,7 +347,8 @@ func GetOpenAIChatCapabilities(modelName, reasoningEffort string) OpenAIChatCapa
 
 	isGPT5Model := IsOpenAIGPT5Model(modelName)
 	isGPT6SolLuna := isOpenAIModelSnapshot(modelName, "gpt-6-sol") || isOpenAIModelSnapshot(modelName, "gpt-6-luna")
-	if !isGPT5Model && !isGPT6SolLuna && !isOpenAIModelSnapshot(modelName, "gpt-6-astra") {
+	isGPT6Terra := isOpenAIModelSnapshot(modelName, "gpt-6-terra")
+	if !isGPT5Model && !isGPT6SolLuna && !isGPT6Terra && !isOpenAIModelSnapshot(modelName, "gpt-6-astra") {
 		return capabilities
 	}
 	capabilities.UseMaxCompletionTokens = true
@@ -386,6 +388,28 @@ func isOpenAIModelSnapshot(modelName, baseModel string) bool {
 	}
 	_, err := time.Parse(time.DateOnly, snapshot)
 	return err == nil
+}
+
+// normalizeGPT6DecimalVersion rewrites decimal-version GPT-6 model names such as
+// "gpt-6.1-sol" or "gpt-6.1-sol-2026-10-01" to their base form "gpt-6-sol", so
+// the whole snapshot family shares the same Chat Completions restrictions
+// (notably max_completion_tokens). Names without a numeric decimal version
+// segment are returned unchanged.
+func normalizeGPT6DecimalVersion(modelName string) string {
+	if !strings.HasPrefix(modelName, "gpt-6.") {
+		return modelName
+	}
+	rest := strings.TrimPrefix(modelName, "gpt-6.")
+	dash := strings.Index(rest, "-")
+	if dash <= 0 {
+		return modelName
+	}
+	for _, r := range rest[:dash] {
+		if r < '0' || r > '9' {
+			return modelName
+		}
+	}
+	return "gpt-6-" + rest[dash+1:]
 }
 
 func IsQwenThinkingBudgetModel(modelName string) bool {
