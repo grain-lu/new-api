@@ -360,12 +360,14 @@ func TestGetOpenAIChatCapabilitiesGPT6DecimalVersions(t *testing.T) {
 	tests := []struct {
 		name        string
 		model       string
+		effort      string
 		maxCompl    bool
 		temperature bool
 	}{
 		{name: "gpt-6.1-sol uses max_completion_tokens", model: "gpt-6.1-sol", maxCompl: true, temperature: true},
 		{name: "gpt-6.1-sol snapshot uses max_completion_tokens", model: "gpt-6.1-sol-2026-10-01", maxCompl: true, temperature: true},
 		{name: "gpt-6.1-terra uses max_completion_tokens", model: "gpt-6.1-terra", maxCompl: true, temperature: false},
+		{name: "gpt-6.1-terra keeps sampling at explicit none", model: "gpt-6.1-terra", effort: "none", maxCompl: true, temperature: true},
 		{name: "gpt-6.1-luna uses max_completion_tokens", model: "gpt-6.1-luna", maxCompl: true, temperature: true},
 		{name: "gpt-6-terra uses max_completion_tokens", model: "gpt-6-terra", maxCompl: true, temperature: false},
 		{name: "unknown decimal variant keeps max_tokens", model: "gpt-6.2-unknown", maxCompl: false, temperature: true},
@@ -373,7 +375,7 @@ func TestGetOpenAIChatCapabilitiesGPT6DecimalVersions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			capabilities := GetOpenAIChatCapabilities(tt.model, "")
+			capabilities := GetOpenAIChatCapabilities(tt.model, tt.effort)
 			assert.Equal(t, tt.maxCompl, capabilities.UseMaxCompletionTokens)
 			assert.Equal(t, tt.temperature, capabilities.SupportsTemperature)
 		})

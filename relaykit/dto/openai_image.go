@@ -22,11 +22,11 @@ type ImageBillingParameters struct {
 }
 
 type ImageRequest struct {
-	Model             string          `json:"model"`
-	Prompt            string          `json:"prompt" binding:"required"`
-	N                 *uint           `json:"n,omitempty"`
-	Size              string          `json:"size,omitempty"`
-	Quality           string          `json:"quality,omitempty"`
+	Model   string `json:"model"`
+	Prompt  string `json:"prompt" binding:"required"`
+	N       *uint  `json:"n,omitempty"`
+	Size    string `json:"size,omitempty"`
+	Quality string `json:"quality,omitempty"`
 	// patch(2026-10-30): xAI grok-imagine 图片的档位字段。原结构体没有这两个字段,
 	// 入口 JSON 绑定时被静默剥离,导致经 new-api 无法用 aspect_ratio/resolution
 	// (只能用 size,且 CPA 会把输出归一)。omitempty 保证非 xAI 渠道零影响。
